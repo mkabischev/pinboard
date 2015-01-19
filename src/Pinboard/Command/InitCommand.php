@@ -2,10 +2,13 @@
 namespace Pinboard\Command;
 
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\ConfirmationQuestion;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Process\Process;
 
 class InitCommand extends Command
@@ -23,21 +26,19 @@ class InitCommand extends Command
         $output->writeln('<info>Defining crontab task...</info>');
         $output->writeln('<info>Please enter the frequency of data aggregating</info> <comment>(frequency must be equal "pinba_stats_history" of the pinba engine config)</comment>.');
 
-        $dialog = $this->getHelperSet()->get('dialog');
-        $frequency = $dialog->askAndValidate(
-            $output,
-            'Frequency (in minutes, default "15"): ',
-            function ($answer) {
-                if (intval($answer) <= 0) {
-                    throw new \RunTimeException(
-                        'You must enter positive integer value'
-                    );
-                }
-                return $answer;
-            },
-            false,
-            '15'
-        );
+        /** @var QuestionHelper $helper */
+        $helper = $this->getHelper('question');
+        $question = new Question('Frequency (in minutes, default "15"): ', 15);
+        $question->setValidator(function ($answer) {
+            if (intval($answer) <= 0) {
+                throw new \RunTimeException(
+                    'You must enter positive integer value'
+                );
+            }
+            return $answer;
+        });
+
+        $frequency = $helper->ask($input, $output, $question);
 
         $process = new Process('crontab -l');
         $process->setTimeout(20);
